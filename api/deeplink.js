@@ -16,13 +16,16 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { url, accessKey, secretKey } = req.body;
+    const { url, accessKey, secretKey, subId } = req.body;
     if (!url || !accessKey || !secretKey) {
         return res.status(400).json({ error: '필수 값이 없습니다.' });
     }
 
     const path = '/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink';
     const authHeader = generateAuthorization('POST', path, accessKey, secretKey);
+
+    const body = { coupangUrls: [url] };
+    if (subId) body.subId = subId;
 
     try {
         const response = await fetch('https://api-gateway.coupang.com' + path, {
@@ -31,7 +34,7 @@ module.exports = async (req, res) => {
                 'Authorization': authHeader,
                 'Content-Type': 'application/json'
             },
-            body: JSON.stringify({ coupangUrls: [url] })
+            body: JSON.stringify(body)
         });
         const data = await response.json();
         res.status(200).json(data);

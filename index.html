@@ -211,6 +211,8 @@
         <input type="text" id="accessKey" placeholder="쿠팡 파트너스 Access Key">
         <label>Secret Key</label>
         <input type="password" id="secretKey" placeholder="쿠팡 파트너스 Secret Key">
+        <label>Sub ID <span style="color:#bbb;font-weight:400">(선택, 채널 구분용)</span></label>
+        <input type="text" id="subId" placeholder="예: blog, instagram, youtube">
         <button class="btn btn-primary" onclick="saveKeys()">저장</button>
     </div>
 
@@ -239,6 +241,7 @@
         function init() {
             const access = localStorage.getItem('coupang_access');
             const secret = localStorage.getItem('coupang_secret');
+            const sub = localStorage.getItem('coupang_subid');
             if (access && secret) {
                 document.getElementById('keyBadge').textContent = '설정됨';
                 document.getElementById('keyBadge').className = 'badge ok';
@@ -246,6 +249,7 @@
                 document.getElementById('settingsToggle').textContent = '⚙️ API 키 변경';
                 document.getElementById('accessKey').value = access;
                 document.getElementById('secretKey').value = secret;
+                if (sub) document.getElementById('subId').value = sub;
             } else {
                 document.getElementById('settingsCard').style.display = 'block';
             }
@@ -259,12 +263,15 @@
         function saveKeys() {
             const access = document.getElementById('accessKey').value.trim();
             const secret = document.getElementById('secretKey').value.trim();
+            const sub = document.getElementById('subId').value.trim();
             if (!access || !secret) {
                 alert('Access Key와 Secret Key를 모두 입력해주세요.');
                 return;
             }
             localStorage.setItem('coupang_access', access);
             localStorage.setItem('coupang_secret', secret);
+            if (sub) localStorage.setItem('coupang_subid', sub);
+            else localStorage.removeItem('coupang_subid');
             document.getElementById('keyBadge').textContent = '설정됨';
             document.getElementById('keyBadge').className = 'badge ok';
             document.getElementById('mainKeyBadge').style.display = 'inline';
@@ -297,7 +304,7 @@
                 const response = await fetch('/api/deeplink', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url, accessKey, secretKey })
+                    body: JSON.stringify({ url, accessKey, secretKey, subId: localStorage.getItem('coupang_subid') || '' })
                 });
 
                 const data = await response.json();
