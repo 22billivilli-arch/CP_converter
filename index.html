@@ -1,0 +1,346 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
+    <title>변신쿠파스</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+            background: #f5f5f5;
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            padding: 24px 16px;
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 700;
+            color: #e52228;
+            margin-bottom: 6px;
+            letter-spacing: -0.5px;
+        }
+
+        .subtitle {
+            font-size: 13px;
+            color: #999;
+            margin-bottom: 28px;
+        }
+
+        .card {
+            background: #fff;
+            border-radius: 16px;
+            padding: 20px;
+            width: 100%;
+            max-width: 480px;
+            box-shadow: 0 2px 12px rgba(0,0,0,0.08);
+            margin-bottom: 16px;
+        }
+
+        .card-title {
+            font-size: 13px;
+            font-weight: 600;
+            color: #555;
+            margin-bottom: 12px;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .badge {
+            background: #e52228;
+            color: white;
+            font-size: 10px;
+            padding: 2px 7px;
+            border-radius: 20px;
+        }
+
+        .badge.ok {
+            background: #2da44e;
+        }
+
+        label {
+            display: block;
+            font-size: 12px;
+            color: #888;
+            margin-bottom: 4px;
+            margin-top: 12px;
+        }
+
+        input[type="text"], input[type="password"], textarea {
+            width: 100%;
+            padding: 12px 14px;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.2s;
+            background: #fafafa;
+        }
+
+        input:focus, textarea:focus {
+            border-color: #e52228;
+            background: #fff;
+        }
+
+        textarea {
+            resize: none;
+            height: 80px;
+            font-family: inherit;
+        }
+
+        .btn {
+            width: 100%;
+            padding: 14px;
+            border: none;
+            border-radius: 10px;
+            font-size: 15px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 14px;
+            transition: opacity 0.2s, transform 0.1s;
+        }
+
+        .btn:active { transform: scale(0.98); }
+
+        .btn-primary {
+            background: #e52228;
+            color: white;
+        }
+
+        .btn-secondary {
+            background: #f0f0f0;
+            color: #444;
+            font-size: 13px;
+            padding: 10px;
+        }
+
+        .btn:disabled {
+            opacity: 0.5;
+            cursor: not-allowed;
+        }
+
+        .result-box {
+            background: #f8f8f8;
+            border: 1.5px solid #e0e0e0;
+            border-radius: 10px;
+            padding: 12px 14px;
+            font-size: 13px;
+            color: #333;
+            word-break: break-all;
+            line-height: 1.6;
+            margin-top: 12px;
+            min-height: 48px;
+        }
+
+        .result-box.success {
+            border-color: #2da44e;
+            background: #f0faf3;
+        }
+
+        .result-box.error {
+            border-color: #e52228;
+            background: #fff5f5;
+            color: #c00;
+        }
+
+        .copy-btn {
+            width: 100%;
+            padding: 11px;
+            border: 1.5px solid #2da44e;
+            border-radius: 10px;
+            background: white;
+            color: #2da44e;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            margin-top: 10px;
+            transition: background 0.2s;
+        }
+
+        .copy-btn:active { background: #f0faf3; }
+
+        .loading {
+            display: inline-block;
+            width: 18px;
+            height: 18px;
+            border: 2.5px solid rgba(255,255,255,0.4);
+            border-top-color: white;
+            border-radius: 50%;
+            animation: spin 0.7s linear infinite;
+            vertical-align: middle;
+            margin-right: 6px;
+        }
+
+        @keyframes spin { to { transform: rotate(360deg); } }
+
+        .settings-link {
+            font-size: 12px;
+            color: #aaa;
+            text-decoration: none;
+            margin-top: 8px;
+            display: block;
+            text-align: center;
+        }
+
+        #settingsCard { display: none; }
+
+        .divider {
+            height: 1px;
+            background: #eee;
+            margin: 14px 0;
+        }
+    </style>
+</head>
+<body>
+
+    <h1>변신쿠파스</h1>
+    <p class="subtitle">쿠팡 링크 → 파트너스 링크 변환기</p>
+
+    <!-- API 키 설정 카드 -->
+    <div class="card" id="settingsCard">
+        <div class="card-title">
+            🔑 API 키 설정
+            <span class="badge" id="keyBadge">미설정</span>
+        </div>
+        <label>Access Key</label>
+        <input type="text" id="accessKey" placeholder="쿠팡 파트너스 Access Key">
+        <label>Secret Key</label>
+        <input type="password" id="secretKey" placeholder="쿠팡 파트너스 Secret Key">
+        <button class="btn btn-primary" onclick="saveKeys()">저장</button>
+    </div>
+
+    <!-- 메인 변환 카드 -->
+    <div class="card">
+        <div class="card-title">
+            🔗 링크 변환
+            <span class="badge ok" id="mainKeyBadge" style="display:none">키 저장됨</span>
+        </div>
+        <label>쿠팡 상품 URL</label>
+        <textarea id="targetUrl" placeholder="https://www.coupang.com/vp/products/..."></textarea>
+        <button class="btn btn-primary" id="convertBtn" onclick="convertLink()">파트너스 링크로 변환</button>
+
+        <div id="resultArea" style="display:none">
+            <div class="divider"></div>
+            <div class="result-box" id="resultBox"></div>
+            <button class="copy-btn" id="copyBtn" onclick="copyResult()">복사</button>
+        </div>
+
+        <a href="#" class="settings-link" onclick="toggleSettings(); return false;" id="settingsToggle">⚙️ API 키 설정</a>
+    </div>
+
+    <script>
+        let resultUrl = '';
+
+        function init() {
+            const access = localStorage.getItem('coupang_access');
+            const secret = localStorage.getItem('coupang_secret');
+            if (access && secret) {
+                document.getElementById('keyBadge').textContent = '설정됨';
+                document.getElementById('keyBadge').className = 'badge ok';
+                document.getElementById('mainKeyBadge').style.display = 'inline';
+                document.getElementById('settingsToggle').textContent = '⚙️ API 키 변경';
+                document.getElementById('accessKey').value = access;
+                document.getElementById('secretKey').value = secret;
+            } else {
+                document.getElementById('settingsCard').style.display = 'block';
+            }
+        }
+
+        function toggleSettings() {
+            const card = document.getElementById('settingsCard');
+            card.style.display = card.style.display === 'none' ? 'block' : 'none';
+        }
+
+        function saveKeys() {
+            const access = document.getElementById('accessKey').value.trim();
+            const secret = document.getElementById('secretKey').value.trim();
+            if (!access || !secret) {
+                alert('Access Key와 Secret Key를 모두 입력해주세요.');
+                return;
+            }
+            localStorage.setItem('coupang_access', access);
+            localStorage.setItem('coupang_secret', secret);
+            document.getElementById('keyBadge').textContent = '설정됨';
+            document.getElementById('keyBadge').className = 'badge ok';
+            document.getElementById('mainKeyBadge').style.display = 'inline';
+            document.getElementById('settingsToggle').textContent = '⚙️ API 키 변경';
+            document.getElementById('settingsCard').style.display = 'none';
+            alert('API 키가 저장되었습니다.');
+        }
+
+        async function convertLink() {
+            const accessKey = localStorage.getItem('coupang_access');
+            const secretKey = localStorage.getItem('coupang_secret');
+            if (!accessKey || !secretKey) {
+                document.getElementById('settingsCard').style.display = 'block';
+                alert('먼저 API 키를 설정해주세요.');
+                return;
+            }
+
+            const url = document.getElementById('targetUrl').value.trim();
+            if (!url) {
+                alert('쿠팡 상품 URL을 입력해주세요.');
+                return;
+            }
+
+            const btn = document.getElementById('convertBtn');
+            btn.disabled = true;
+            btn.innerHTML = '<span class="loading"></span>변환 중...';
+            document.getElementById('resultArea').style.display = 'none';
+
+            try {
+                const response = await fetch('/api/deeplink', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ url, accessKey, secretKey })
+                });
+
+                const data = await response.json();
+
+                const box = document.getElementById('resultBox');
+                document.getElementById('resultArea').style.display = 'block';
+
+                if (data.rCode === '0' && data.data && data.data[0]) {
+                    resultUrl = data.data[0].shortenUrl || data.data[0].landingUrl;
+                    box.className = 'result-box success';
+                    box.textContent = resultUrl;
+                    document.getElementById('copyBtn').style.display = 'block';
+                } else {
+                    resultUrl = '';
+                    box.className = 'result-box error';
+                    box.textContent = '오류: ' + (data.rMessage || JSON.stringify(data));
+                    document.getElementById('copyBtn').style.display = 'none';
+                }
+            } catch (err) {
+                document.getElementById('resultArea').style.display = 'block';
+                const box = document.getElementById('resultBox');
+                box.className = 'result-box error';
+                box.textContent = '서버 오류: ' + err.message;
+                document.getElementById('copyBtn').style.display = 'none';
+            } finally {
+                btn.disabled = false;
+                btn.innerHTML = '파트너스 링크로 변환';
+            }
+        }
+
+        async function copyResult() {
+            if (!resultUrl) return;
+            try {
+                await navigator.clipboard.writeText(resultUrl);
+                const btn = document.getElementById('copyBtn');
+                btn.textContent = '✅ 복사됨!';
+                setTimeout(() => { btn.textContent = '복사'; }, 2000);
+            } catch {
+                prompt('아래 링크를 복사하세요:', resultUrl);
+            }
+        }
+
+        init();
+    </script>
+</body>
+</html>
