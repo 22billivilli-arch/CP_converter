@@ -24,7 +24,22 @@ module.exports = async (req, res) => {
     const path = '/v2/providers/affiliate_open_api/apis/openapi/v1/deeplink';
     const authHeader = generateAuthorization('POST', path, accessKey, secretKey);
 
-    const body = { coupangUrls: [url] };
+    // 단축/파트너스 링크면 실제 상품 URL로 풀기
+    let productUrl = url;
+    try {
+        const resolved = await fetch(url, { method: 'GET', redirect: 'follow' });
+        const finalUrl = resolved.url;
+        if (finalUrl && finalUrl.includes('coupang.com')) {
+            const u = new URL(finalUrl);
+            // 기존 파트너스 파라미터 제거
+            u.searchParams.delete('lptag');
+            u.searchParams.delete('subId');
+            u.searchParams.delete('pageKey');
+            productUrl = u.origin + u.pathname + (u.search ? u.search : '');
+        }
+    } catch (_) {}
+
+    const body = { coupangUrls: [productUrl] };
     if (subId) body.subId = subId;
 
     try {
