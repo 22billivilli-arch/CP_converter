@@ -31,10 +31,14 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { url, token } = req.body;
+    const { url } = req.body;
     if (!url) return res.status(400).json({ error: 'URL이 필요합니다.' });
 
-    // 1. Graph API (토큰 있을 때 — 영상 포함)
+    // 토큰: 클라이언트 전달값 또는 서버 기본값
+    const token = req.body.token ||
+        'THAALYAgagxE1BYlpnVlJwSnc0dmFzOTdTTzl2UGFfVHQ3U3JBaTBhZATlFeVhWaFZAfbTJfa1hpNDFwc3IwU0pWc2pISExKNmpOSWNzSXkwVEtYbk04UWpoSlN1b0ZAwQVBOU2x6QzNfbW13Mmp3TmdITGhaU2Y3TVBxQ1ZAmVmNhOVdmanF0d0NhdFNZAQ3lTaUUZD';
+
+    // 1. Graph API — 영상 포함 정확히 추출
     if (token) {
         try {
             const sc  = extractShortcode(url);
