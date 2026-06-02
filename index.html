@@ -468,7 +468,7 @@
                 const res = await fetch('/api/threads-images', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ url }),
+                    body: JSON.stringify({ url, token: localStorage.getItem('threads_token') || '' }),
                 });
                 const data = await res.json();
                 const msg = document.getElementById('threadsMsg');
