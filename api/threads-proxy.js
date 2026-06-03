@@ -8,18 +8,25 @@ module.exports = async (req, res) => {
     if (!url) return res.status(400).send('url parameter required');
 
     try {
-        const r = await fetch(decodeURIComponent(url), {
+        const decoded = decodeURIComponent(url);
+        const r = await fetch(decoded, {
             headers: {
-                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15',
-                'Referer': 'https://www.threads.net/',
+                'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1',
+                'Referer':    'https://www.threads.net/',
+                'Origin':     'https://www.threads.net',
+                'Accept':     'video/mp4,video/*;q=0.9,*/*;q=0.8',
             },
         });
-        if (!r.ok) return res.status(r.status).send(`upstream ${r.status}`);
+        if (!r.ok) {
+            console.error(`proxy upstream ${r.status} for ${decoded.slice(0,80)}`);
+            return res.status(502).json({ error: `upstream ${r.status}` });
+        }
         const ct = r.headers.get('content-type') || 'application/octet-stream';
+        const buf = await r.arrayBuffer();
         res.setHeader('Content-Type', ct);
         res.setHeader('Content-Disposition', 'attachment');
-        res.send(Buffer.from(await r.arrayBuffer()));
+        res.send(Buffer.from(buf));
     } catch (err) {
-        res.status(500).send(err.message);
+        res.status(500).json({ error: err.message });
     }
 };

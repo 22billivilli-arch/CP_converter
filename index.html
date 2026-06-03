@@ -593,17 +593,19 @@
             const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
             const proxyUrl = '/api/threads-proxy?url=' + encodedUrl;
 
-            // blob 취득: 직접 fetch 우선 (CDN CORS 허용, 프록시 타임아웃 우회)
+            // blob 취득: 직접 fetch 우선, 실패 시 프록시 폴백
             async function getBlob() {
-                try {
-                    const r = await fetch(rawUrl);
-                    if (!r.ok) throw new Error('direct ' + r.status);
-                    return r.blob();
-                } catch (_) {
-                    const r2 = await fetch(proxyUrl);
-                    if (!r2.ok) throw new Error('proxy ' + r2.status);
-                    return r2.blob();
-                }
+                const validate = async (r) => {
+                    if (!r.ok) throw new Error('HTTP ' + r.status);
+                    const b = await r.blob();
+                    // "upstream 403" 같은 에러 텍스트 파일 차단
+                    if (b.size < 1000 || (b.type && b.type.startsWith('text/'))) {
+                        throw new Error('invalid_media');
+                    }
+                    return b;
+                };
+                try { return await validate(await fetch(rawUrl)); } catch (_) {}
+                return await validate(await fetch(proxyUrl));
             }
 
             try {
@@ -624,6 +626,10 @@
                 setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
             } catch (e) {
                 if (e.name === 'AbortError') return;
+                // blob 실패 → Web Share URL 공유 (모바일: 공유시트에서 저장)
+                if (navigator.share) {
+                    try { await navigator.share({ url: rawUrl, title: fname }); return; } catch (_) {}
+                }
                 window.open(rawUrl, '_blank');
             }
         }
