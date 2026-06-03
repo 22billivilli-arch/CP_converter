@@ -587,53 +587,40 @@
             }).catch(() => { prompt('복사하세요:', text); });
         }
 
-        async function downloadOne(encodedUrl, idx, isVideo) {
-            const rawUrl   = decodeURIComponent(encodedUrl);
-            const fname    = isVideo ? `threads_video_${idx}.mp4` : `threads_${idx}.jpg`;
-            const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
-            const proxyUrl = '/api/threads-proxy?url=' + encodedUrl;
+        function showVideoOverlay(videoUrl) {
+            const old = document.getElementById('_vOverlay');
+            if (old) old.remove();
+            const ov = document.createElement('div');
+            ov.id = '_vOverlay';
+            ov.style.cssText = 'position:fixed;inset:0;z-index:9999;background:#000;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:16px;';
+            ov.innerHTML = `
+                <div style="position:absolute;top:14px;right:14px;">
+                    <button onclick="document.getElementById('_vOverlay').remove()"
+                        style="background:rgba(255,255,255,0.15);border:none;color:#fff;width:38px;height:38px;border-radius:50%;font-size:20px;cursor:pointer;">✕</button>
+                </div>
+                <video src="${videoUrl}" controls playsinline autoplay
+                    style="width:100%;max-height:72vh;object-fit:contain;"></video>
+                <div style="text-align:center;padding:0 24px;">
+                    <div style="font-size:16px;font-weight:700;color:#fff;margin-bottom:8px;">📱 영상을 꾹 눌러 저장하세요</div>
+                    <div style="font-size:13px;color:rgba(255,255,255,0.7);line-height:1.7;">
+                        영상 위에서 손가락으로 <b style="color:#fff">꾹 누르기</b><br>
+                        → <b style="color:#4ade80">"비디오 저장"</b> 선택
+                    </div>
+                </div>`;
+            document.body.appendChild(ov);
+        }
 
-            // blob 취득: 직접 fetch 우선, 실패 시 프록시 폴백
-            async function getBlob() {
-                // CDN CORS=* → credentials:omit 으로 직접 fetch
-                const tryDirect = async () => {
-                    const r = await fetch(rawUrl, { mode: 'cors', credentials: 'omit' });
-                    if (!r.ok) throw new Error('HTTP ' + r.status);
-                    const b = await r.blob();
-                    if (b.size < 1000 || (b.type && b.type.startsWith('text/'))) throw new Error('invalid_media');
-                    return b;
-                };
-                try { return await tryDirect(); } catch (_) {}
-                // 직접 실패 시 프록시 폴백
-                const r2 = await fetch(proxyUrl);
-                if (!r2.ok) throw new Error('proxy HTTP ' + r2.status);
-                const b2 = await r2.blob();
-                if (b2.size < 1000 || (b2.type && b2.type.startsWith('text/'))) throw new Error('invalid_media');
-                return b2;
-            }
-
-            try {
-                const blob = await getBlob();
-                const file = new File([blob], fname, { type: blob.type || mimeType });
-
-                // iOS / Android — 갤러리 저장
-                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
-                    await navigator.share({ files: [file], title: fname });
-                    return;
-                }
-
-                // PC — 파일 다운로드
-                const blobUrl = URL.createObjectURL(blob);
-                const a = document.createElement('a');
-                a.href = blobUrl; a.download = fname;
-                document.body.appendChild(a); a.click(); document.body.removeChild(a);
-                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
-            } catch (e) {
-                if (e.name === 'AbortError') return;
-                // blob 실패 → Web Share URL 공유 (모바일: 공유시트에서 저장)
-                if (navigator.share) {
-                    try { await navigator.share({ url: rawUrl, title: fname }); return; } catch (_) {}
-                }
+        function downloadOne(encodedUrl, idx, isVideo) {
+            const rawUrl = decodeURIComponent(encodedUrl);
+            if (isVideo) {
+                // 이미 재생 중인 video 요소의 currentSrc 사용 (CDN 재요청 없음)
+                const videos = document.querySelectorAll('.video-item video');
+                const videoEl = videos[idx - 1] || videos[0];
+                const playUrl = (videoEl && videoEl.currentSrc && videoEl.currentSrc.startsWith('http'))
+                    ? videoEl.currentSrc : rawUrl;
+                showVideoOverlay(playUrl);
+            } else {
+                // 이미지: 새 탭에서 길게 눌러 저장
                 window.open(rawUrl, '_blank');
             }
         }
