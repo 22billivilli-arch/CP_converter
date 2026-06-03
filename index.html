@@ -588,34 +588,44 @@
         }
 
         async function downloadOne(encodedUrl, idx, isVideo) {
+            const rawUrl   = decodeURIComponent(encodedUrl);
             const fname    = isVideo ? `threads_video_${idx}.mp4` : `threads_${idx}.jpg`;
             const mimeType = isVideo ? 'video/mp4' : 'image/jpeg';
             const proxyUrl = '/api/threads-proxy?url=' + encodedUrl;
 
-            // iOS / Android — Web Share API로 갤러리 저장
-            if (navigator.share && navigator.canShare) {
+            // blob 취득: 직접 fetch 우선 (CDN CORS 허용, 프록시 타임아웃 우회)
+            async function getBlob() {
                 try {
-                    const r = await fetch(proxyUrl);
-                    if (!r.ok) throw new Error('proxy ' + r.status);
-                    const blob = await r.blob();
-                    const file = new File([blob], fname, { type: blob.type || mimeType });
-                    if (navigator.canShare({ files: [file] })) {
-                        await navigator.share({ files: [file], title: fname });
-                        return;
-                    }
-                } catch (e) {
-                    if (e.name === 'AbortError') return;
-                    // 공유 실패 시 일반 다운로드로 폴백
+                    const r = await fetch(rawUrl);
+                    if (!r.ok) throw new Error('direct ' + r.status);
+                    return r.blob();
+                } catch (_) {
+                    const r2 = await fetch(proxyUrl);
+                    if (!r2.ok) throw new Error('proxy ' + r2.status);
+                    return r2.blob();
                 }
             }
 
-            // PC / 미지원 브라우저 — 일반 다운로드
-            const a = document.createElement('a');
-            a.href = proxyUrl;
-            a.download = fname;
-            document.body.appendChild(a);
-            a.click();
-            document.body.removeChild(a);
+            try {
+                const blob = await getBlob();
+                const file = new File([blob], fname, { type: blob.type || mimeType });
+
+                // iOS / Android — 갤러리 저장
+                if (navigator.share && navigator.canShare && navigator.canShare({ files: [file] })) {
+                    await navigator.share({ files: [file], title: fname });
+                    return;
+                }
+
+                // PC — 파일 다운로드
+                const blobUrl = URL.createObjectURL(blob);
+                const a = document.createElement('a');
+                a.href = blobUrl; a.download = fname;
+                document.body.appendChild(a); a.click(); document.body.removeChild(a);
+                setTimeout(() => URL.revokeObjectURL(blobUrl), 5000);
+            } catch (e) {
+                if (e.name === 'AbortError') return;
+                window.open(rawUrl, '_blank');
+            }
         }
 
         async function downloadAll() {
