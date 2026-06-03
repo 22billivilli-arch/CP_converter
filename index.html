@@ -595,17 +595,21 @@
 
             // blob 취득: 직접 fetch 우선, 실패 시 프록시 폴백
             async function getBlob() {
-                const validate = async (r) => {
+                // CDN CORS=* → credentials:omit 으로 직접 fetch
+                const tryDirect = async () => {
+                    const r = await fetch(rawUrl, { mode: 'cors', credentials: 'omit' });
                     if (!r.ok) throw new Error('HTTP ' + r.status);
                     const b = await r.blob();
-                    // "upstream 403" 같은 에러 텍스트 파일 차단
-                    if (b.size < 1000 || (b.type && b.type.startsWith('text/'))) {
-                        throw new Error('invalid_media');
-                    }
+                    if (b.size < 1000 || (b.type && b.type.startsWith('text/'))) throw new Error('invalid_media');
                     return b;
                 };
-                try { return await validate(await fetch(rawUrl)); } catch (_) {}
-                return await validate(await fetch(proxyUrl));
+                try { return await tryDirect(); } catch (_) {}
+                // 직접 실패 시 프록시 폴백
+                const r2 = await fetch(proxyUrl);
+                if (!r2.ok) throw new Error('proxy HTTP ' + r2.status);
+                const b2 = await r2.blob();
+                if (b2.size < 1000 || (b2.type && b2.type.startsWith('text/'))) throw new Error('invalid_media');
+                return b2;
             }
 
             try {
