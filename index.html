@@ -613,14 +613,20 @@
         function downloadOne(encodedUrl, idx, isVideo) {
             const rawUrl = decodeURIComponent(encodedUrl);
             if (isVideo) {
-                // 이미 재생 중인 video 요소의 currentSrc 사용 (CDN 재요청 없음)
                 const videos = document.querySelectorAll('.video-item video');
                 const videoEl = videos[idx - 1] || videos[0];
                 const playUrl = (videoEl && videoEl.currentSrc && videoEl.currentSrc.startsWith('http'))
                     ? videoEl.currentSrc : rawUrl;
+
+                // iOS: webkitEnterFullscreen → 네이티브 플레이어 → 공유/저장 버튼
+                if (videoEl && videoEl.webkitEnterFullscreen) {
+                    videoEl.play().catch(() => {});
+                    videoEl.webkitEnterFullscreen();
+                    return;
+                }
+                // 비iOS: 오버레이
                 showVideoOverlay(playUrl);
             } else {
-                // 이미지: 새 탭에서 길게 눌러 저장
                 window.open(rawUrl, '_blank');
             }
         }
