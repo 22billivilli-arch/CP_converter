@@ -610,23 +610,34 @@
             document.body.appendChild(ov);
         }
 
-        function downloadOne(encodedUrl, idx, isVideo) {
-            const rawUrl = decodeURIComponent(encodedUrl);
-            if (isVideo) {
-                const videos = document.querySelectorAll('.video-item video');
-                const videoEl = videos[idx - 1] || videos[0];
-                const playUrl = (videoEl && videoEl.currentSrc && videoEl.currentSrc.startsWith('http'))
-                    ? videoEl.currentSrc : rawUrl;
+        const PROXY = 'https://corsproxy.io/?';
 
-                // iOS: webkitEnterFullscreen → 네이티브 플레이어 → 공유/저장 버튼
-                if (videoEl && videoEl.webkitEnterFullscreen) {
-                    videoEl.play().catch(() => {});
-                    videoEl.webkitEnterFullscreen();
+        async function downloadBlob(url, filename) {
+            const r = await fetch(PROXY + encodeURIComponent(url));
+            if (!r.ok) throw new Error(`HTTP ${r.status}`);
+            const b = await r.blob();
+            if (/iPhone|iPad|iPod/i.test(navigator.userAgent) && navigator.canShare) {
+                const file = new File([b], filename, {type: b.type});
+                if (navigator.canShare({files: [file]})) {
+                    await navigator.share({files: [file], title: filename});
                     return;
                 }
-                // 비iOS: 오버레이
-                showVideoOverlay(playUrl);
-            } else {
+            }
+            const a = document.createElement('a');
+            a.href = URL.createObjectURL(b);
+            a.download = filename;
+            document.body.appendChild(a); a.click();
+            document.body.removeChild(a);
+            URL.revokeObjectURL(a.href);
+        }
+
+        async function downloadOne(encodedUrl, idx, isVideo) {
+            const rawUrl = decodeURIComponent(encodedUrl);
+            const ext = isVideo ? 'mp4' : 'jpg';
+            const fname = `threads_${idx}.${ext}`;
+            try {
+                await downloadBlob(rawUrl, fname);
+            } catch(e) {
                 window.open(rawUrl, '_blank');
             }
         }
@@ -634,7 +645,7 @@
         async function downloadAll() {
             for (let i = 0; i < threadImages.length; i++) {
                 await new Promise(r => setTimeout(r, 400));
-                await downloadOne(encodeURIComponent(threadImages[i]), i + 1);
+                await downloadOne(encodeURIComponent(threadImages[i]), i + 1, false);
             }
         }
 
