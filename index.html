@@ -610,10 +610,15 @@
             document.body.appendChild(ov);
         }
 
-        const PROXY = 'https://corsproxy.io/?';
+        const PROXY       = 'https://corsproxy.io/?';
+        const MEDIA_PROXY = '/api/media-proxy?url=';
 
         async function fetchBlob(url) {
-            for (const target of [url, PROXY + encodeURIComponent(url)]) {
+            for (const target of [
+                MEDIA_PROXY + encodeURIComponent(url),
+                url,
+                PROXY + encodeURIComponent(url)
+            ]) {
                 try {
                     const r = await fetch(target);
                     if (r.ok) return await r.blob();
