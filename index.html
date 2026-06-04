@@ -648,13 +648,8 @@
                 URL.revokeObjectURL(a.href);
                 return;
             }
-            // blob 실패 → iOS 영상은 네이티브 플레이어로
-            if (isVideo && /iPhone|iPad|iPod/i.test(navigator.userAgent)) {
-                const videos = document.querySelectorAll('.video-item video');
-                const v = videos[idx - 1] || videos[0];
-                if (v) { v.play().catch(() => {}); v.webkitEnterFullscreen?.(); return; }
-            }
-            window.open(rawUrl, '_blank');
+            // blob 실패 → media-proxy URL로 직접 열기 (Content-Disposition: attachment)
+            window.open(MEDIA_PROXY + encodeURIComponent(rawUrl), '_blank');
         }
 
         async function downloadAll() {
