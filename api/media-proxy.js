@@ -3,7 +3,8 @@ module.exports = async function handler(req, res) {
   if (!url) return res.status(400).json({ error: 'url required' });
 
   try {
-    const upstream = await fetch(url, {
+    const cleanUrl = url.replace(/&amp;/g, '&').replace(/&#038;/g, '&');
+    const upstream = await fetch(cleanUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
         'Referer': 'https://www.threads.net/',
