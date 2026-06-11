@@ -25,7 +25,10 @@ ${String(topic).trim()}
 - 모든 대본은 반드시 위 주제에 직접적으로 관련된 내용이어야 한다. 주제와 무관하거나 일반적인 콘텐츠는 절대 금지.
 - ${n}개 대본은 서로 다른 앵글/톤(정보형, 공감형, 후킹형, 스토리형 등).
 - 첫 문장은 강한 후킹, 이후 본문, 마지막에 주제와 관련된 해시태그 2~5개.
-- 한 대본당 200~400자, 자연스러운 한국어.`;
+- 한 대본당 200~400자, 자연스러운 한국어.
+
+# 출력 형식 (이 JSON만, 다른 텍스트 없이)
+{"scripts": ["대본1 전체", "대본2 전체", ...]}`;
 
     try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`, {
@@ -36,11 +39,6 @@ ${String(topic).trim()}
                 generationConfig: {
                     temperature: 0.8,
                     responseMimeType: 'application/json',
-                    responseSchema: {
-                        type: 'OBJECT',
-                        properties: { scripts: { type: 'ARRAY', items: { type: 'STRING' } } },
-                        required: ['scripts'],
-                    },
                 },
             }),
         });
@@ -50,8 +48,8 @@ ${String(topic).trim()}
         let scripts = [];
         try { scripts = (JSON.parse(text).scripts || []).filter(s => s && s.trim()); }
         catch (_) { scripts = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, n); }
-        if (!scripts.length) return res.status(200).json({ error: '대본 생성 결과가 비었습니다.', scripts: [] });
-        return res.status(200).json({ scripts });
+        if (!scripts.length) return res.status(200).json({ error: '대본 생성 결과가 비었습니다.', scripts: [], _recv: String(topic).slice(0, 60) });
+        return res.status(200).json({ scripts, _recv: String(topic).slice(0, 60) });
     } catch (e) {
         return res.status(200).json({ error: e.message, scripts: [] });
     }
