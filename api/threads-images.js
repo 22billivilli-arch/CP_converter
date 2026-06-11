@@ -73,19 +73,21 @@ module.exports = async (req, res) => {
     if (req.method === 'OPTIONS') return res.status(200).end();
     if (req.method !== 'POST') return res.status(405).json({ error: 'Method not allowed' });
 
-    const { url } = req.body;
+    const { url, debug } = req.body;
     if (!url) return res.status(400).json({ error: 'URL이 필요합니다.' });
 
     const sc = extractShortcode(url);
+    const dbg = [];
 
     // 1. 브라우저 UA로 메인 페이지 파싱 (JSON 하이드레이션 데이터 포함)
     try {
         const html = await fetchHtml(url,
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
         const result = parseMedia(html);
-        if (result.videos.length || result.images.length)
+        dbg.push({ m: 'chrome', len: html.length, img: result.images.length, vid: result.videos.length, wall: /login|로그인|__bk_sb/i.test(html.slice(0, 4000)) });
+        if (!debug && (result.videos.length || result.images.length))
             return res.status(200).json(result);
-    } catch (_) {}
+    } catch (e) { dbg.push({ m: 'chrome', err: e.message }); }
 
     // 2. embed URL (단순 HTML, 영상 src 포함 경우)
     if (sc) {
@@ -94,10 +96,12 @@ module.exports = async (req, res) => {
             const html = await fetchHtml(embedUrl,
                 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_4 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.4 Mobile/15E148 Safari/604.1');
             const result = parseMedia(html);
-            if (result.videos.length || result.images.length)
+            dbg.push({ m: 'embed', len: html.length, img: result.images.length, vid: result.videos.length });
+            if (!debug && (result.videos.length || result.images.length))
                 return res.status(200).json(result);
-        } catch (_) {}
+        } catch (e) { dbg.push({ m: 'embed', err: e.message }); }
     }
+    if (debug) return res.status(200).json({ dbg });
 
     // 3. LinkedInBot UA (이미지는 확실히 옴)
     try {
