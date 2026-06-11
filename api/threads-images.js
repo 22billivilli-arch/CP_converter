@@ -28,6 +28,12 @@ function parseMedia(html) {
         /<meta[^>]+content="([^"]+)"[^>]+property="og:image[^"]*"/gi,
     ]) for (const m of html.matchAll(pat)) add(images, m[1].replace(/&amp;/g, '&'));
 
+    // JSON 하이드레이션 내 이미지 (캐러셀 모든 사진 — image_versions2.candidates 최고화질 1개씩)
+    for (const m of html.matchAll(/"candidates"\s*:\s*\[\s*\{\s*"url"\s*:\s*"(https:[^"]{10,})"/g))
+        add(images, unescape(m[1]));
+    for (const m of html.matchAll(/"image_url"\s*:\s*"(https:[^"]{10,}\.(?:jpg|jpeg|webp|heic)[^"]*)"/gi))
+        add(images, unescape(m[1]));
+
     for (const pat of [
         /<meta[^>]+property="og:video[^"]*"[^>]+content="([^"]+)"/gi,
         /<meta[^>]+content="([^"]+)"[^>]+property="og:video[^"]*"/gi,
