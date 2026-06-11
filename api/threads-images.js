@@ -16,7 +16,9 @@ async function fetchHtml(url, ua) {
         },
         redirect: 'follow',
     });
-    return r.text();
+    const text = await r.text();
+    fetchHtml.last = { status: r.status, finalUrl: r.url, snippet: text.slice(0, 150) };
+    return text;
 }
 
 function parseMedia(html) {
@@ -84,7 +86,7 @@ module.exports = async (req, res) => {
         const html = await fetchHtml(url,
             'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/125.0.0.0 Safari/537.36');
         const result = parseMedia(html);
-        dbg.push({ m: 'chrome', len: html.length, img: result.images.length, vid: result.videos.length, wall: /login|로그인|__bk_sb/i.test(html.slice(0, 4000)) });
+        dbg.push({ m: 'chrome', len: html.length, status: fetchHtml.last && fetchHtml.last.status, finalUrl: fetchHtml.last && fetchHtml.last.finalUrl, snippet: fetchHtml.last && fetchHtml.last.snippet, img: result.images.length, vid: result.videos.length });
         if (!debug && (result.videos.length || result.images.length))
             return res.status(200).json(result);
     } catch (e) { dbg.push({ m: 'chrome', err: e.message }); }
