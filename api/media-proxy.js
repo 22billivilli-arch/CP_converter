@@ -16,12 +16,18 @@ module.exports = async function handler(req, res) {
       return res.status(upstream.status).json({ error: `upstream ${upstream.status}`, url });
     }
 
-    const contentType = upstream.headers.get('content-type') || 'application/octet-stream';
-    const isVideo = contentType.includes('video') || url.includes('.mp4') || url.includes('t66.');
+    const upType = (upstream.headers.get('content-type') || '').split(';')[0].trim();
+    // CDN content-type을 신뢰. 없으면 URL로 추정 (Threads 영상은 .mp4 없이 o1/v/t16 형태)
+    let outType = upType;
+    if (!outType || outType === 'application/octet-stream') {
+      const isVid = url.includes('.mp4') || /\/v\/t\d|t66\.|t16\.|\/o1\/v\//.test(url);
+      outType = isVid ? 'video/mp4' : 'image/jpeg';
+    }
+    const isVideo = outType.startsWith('video');
     const filename = fname || (isVideo ? 'video.mp4' : 'image.jpg');
 
     res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Content-Type', isVideo ? 'video/mp4' : 'image/jpeg');
+    res.setHeader('Content-Type', outType);
     res.setHeader('Content-Disposition', `attachment; filename="${filename}"`);
 
     const buffer = await upstream.arrayBuffer();
@@ -30,3 +36,6 @@ module.exports = async function handler(req, res) {
     res.status(500).json({ error: e.message });
   }
 };
+
+// 큰 영상 서빙 대비 실행시간 상향
+module.exports.config = { maxDuration: 60 };

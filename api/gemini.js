@@ -107,9 +107,12 @@ ${mediaPart ? `첨부된 제품 ${usedKind}을(를) 보고 작성.` : ''}${userI
                     break;
                 }
                 const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                // 코드펜스/잡텍스트 제거 후 첫 { ~ 마지막 } 만 파싱 (영상 응답이 펜스 감싸는 경우 대비)
+                let jt = text.replace(/```json/gi, '').replace(/```/g, '').trim();
+                const a = jt.indexOf('{'), b = jt.lastIndexOf('}');
+                if (a >= 0 && b > a) jt = jt.slice(a, b + 1);
                 let scripts = [];
-                try { scripts = normalize(JSON.parse(text).scripts || []); }
-                catch (_) { scripts = normalize(text.split(/\n{2,}/)); }
+                try { scripts = normalize(JSON.parse(jt).scripts || []); } catch (_) {}
                 if (scripts.length) return res.status(200).json({ scripts });
                 lastErr = '대본 생성 결과가 비었습니다.';
             } catch (e) { lastErr = e.message; await sleep(800); }
