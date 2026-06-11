@@ -16,14 +16,16 @@ module.exports = async (req, res) => {
     const key = process.env.GEMINI_API_KEY;
     if (!key) return res.status(500).json({ error: 'GEMINI_API_KEY 환경변수가 설정되지 않았습니다 (Vercel 설정 필요).' });
 
-    const prompt = `너는 한국어 스레드(Threads) 콘텐츠 작가야. 아래 주제/지시를 바탕으로 매력적인 스레드 게시글 대본을 정확히 ${n}개 만들어줘.
-- 각 대본은 서로 다른 앵글/톤(정보형, 공감형, 후킹형, 스토리형 등)으로.
-- 첫 문장은 강력한 후킹, 이후 본문, 마지막에 어울리는 해시태그 2~5개.
-- 한 대본당 200~400자.
-- 광고/과장 표현은 자연스럽게.
+    const prompt = `아래 "주제"에 대한 한국어 Threads(스레드) 게시글 대본을 정확히 ${n}개 작성해줘.
 
-주제/지시:
-${String(topic).trim()}`;
+# 주제 (반드시 이 내용으로)
+${String(topic).trim()}
+
+# 규칙 (엄수)
+- 모든 대본은 반드시 위 주제에 직접적으로 관련된 내용이어야 한다. 주제와 무관하거나 일반적인 콘텐츠는 절대 금지.
+- ${n}개 대본은 서로 다른 앵글/톤(정보형, 공감형, 후킹형, 스토리형 등).
+- 첫 문장은 강한 후킹, 이후 본문, 마지막에 주제와 관련된 해시태그 2~5개.
+- 한 대본당 200~400자, 자연스러운 한국어.`;
 
     try {
         const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`, {
@@ -32,7 +34,7 @@ ${String(topic).trim()}`;
             body: JSON.stringify({
                 contents: [{ parts: [{ text: prompt }] }],
                 generationConfig: {
-                    temperature: 1.1,
+                    temperature: 0.8,
                     responseMimeType: 'application/json',
                     responseSchema: {
                         type: 'OBJECT',
