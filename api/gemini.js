@@ -48,8 +48,8 @@ ${String(topic).trim()}
         let scripts = [];
         try { scripts = (JSON.parse(text).scripts || []).filter(s => s && s.trim()); }
         catch (_) { scripts = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, n); }
-        if (!scripts.length) return res.status(200).json({ error: '대본 생성 결과가 비었습니다.', scripts: [], _recv: String(topic).slice(0, 60) });
-        return res.status(200).json({ scripts, _recv: String(topic).slice(0, 60) });
+        if (!scripts.length) return res.status(200).json({ error: '대본 생성 결과가 비었습니다.', scripts: [] });
+        return res.status(200).json({ scripts });
     } catch (e) {
         return res.status(200).json({ error: e.message, scripts: [] });
     }
