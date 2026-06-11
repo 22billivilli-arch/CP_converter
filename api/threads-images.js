@@ -33,6 +33,11 @@ function parseMedia(html) {
         add(images, unescape(m[1]));
     for (const m of html.matchAll(/"image_url"\s*:\s*"(https:[^"]{10,}\.(?:jpg|jpeg|webp|heic)[^"]*)"/gi))
         add(images, unescape(m[1]));
+    // embed/HTML 내 scontent CDN 게시물 이미지 (프로필사진 t51.*-19, UI static.cdninstagram 제외)
+    for (const m of html.matchAll(/https:\/\/scontent[a-z0-9.\-]*\.cdninstagram\.com\/v\/[^\s"'\\<>]+\.(?:jpg|jpeg|webp)[^\s"'\\<>]*/g)) {
+        if (/\/t51\.\d+-19\//.test(m[0])) continue;
+        add(images, m[0].replace(/&amp;/g, '&'));
+    }
 
     for (const pat of [
         /<meta[^>]+property="og:video[^"]*"[^>]+content="([^"]+)"/gi,
