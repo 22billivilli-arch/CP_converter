@@ -1,6 +1,7 @@
 // 스레드 대본 생성 — 주제/지시를 받아 Gemini로 여러 대본 후보 생성.
 // 키는 Vercel 환경변수 GEMINI_API_KEY 로 보관(공개 레포에 하드코딩 금지).
-const MODEL = 'gemini-2.5-flash';
+const MODELS = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-flash-latest'];
+const sleep = ms => new Promise(r => setTimeout(r, ms));
 
 module.exports = async (req, res) => {
     res.setHeader('Access-Control-Allow-Origin', '*');
@@ -30,27 +31,33 @@ ${String(topic).trim()}
 # 출력 형식 (이 JSON만, 다른 텍스트 없이)
 {"scripts": ["대본1 전체", "대본2 전체", ...]}`;
 
-    try {
-        const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${MODEL}:generateContent?key=${key}`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }],
-                generationConfig: {
-                    temperature: 0.8,
-                    responseMimeType: 'application/json',
-                },
-            }),
-        });
-        const data = await r.json();
-        if (data.error) return res.status(500).json({ error: data.error.message || 'Gemini 오류', scripts: [] });
-        const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
-        let scripts = [];
-        try { scripts = (JSON.parse(text).scripts || []).filter(s => s && s.trim()); }
-        catch (_) { scripts = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, n); }
-        if (!scripts.length) return res.status(200).json({ error: '대본 생성 결과가 비었습니다.', scripts: [] });
-        return res.status(200).json({ scripts });
-    } catch (e) {
-        return res.status(200).json({ error: e.message, scripts: [] });
+    const body = JSON.stringify({
+        contents: [{ parts: [{ text: prompt }] }],
+        generationConfig: { temperature: 0.8, responseMimeType: 'application/json' },
+    });
+    // 과부하(high demand/UNAVAILABLE/429/503) 시 재시도 → 다음 모델로 폴백
+    const isBusy = e => /high demand|overload|unavailable|exhausted|rate|quota|try again|503|429/i.test(JSON.stringify(e || ''));
+    let lastErr = 'Gemini 오류';
+    for (const model of MODELS) {
+        for (let attempt = 0; attempt < 2; attempt++) {
+            try {
+                const r = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${model}:generateContent?key=${key}`, {
+                    method: 'POST', headers: { 'Content-Type': 'application/json' }, body,
+                });
+                const data = await r.json();
+                if (data.error) {
+                    lastErr = data.error.message || lastErr;
+                    if (isBusy(data.error)) { await sleep(1200); continue; } // 같은 모델 1회 재시도
+                    break; // 다른 오류 → 다음 모델
+                }
+                const text = data?.candidates?.[0]?.content?.parts?.[0]?.text || '';
+                let scripts = [];
+                try { scripts = (JSON.parse(text).scripts || []).filter(s => s && s.trim()); }
+                catch (_) { scripts = text.split(/\n{2,}/).map(s => s.trim()).filter(Boolean).slice(0, n); }
+                if (scripts.length) return res.status(200).json({ scripts });
+                lastErr = '대본 생성 결과가 비었습니다.';
+            } catch (e) { lastErr = e.message; await sleep(800); }
+        }
     }
+    return res.status(200).json({ error: `대본 생성 실패: ${lastErr} (잠시 후 다시 시도해주세요)`, scripts: [] });
 };
