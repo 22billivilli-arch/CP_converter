@@ -4,10 +4,14 @@ module.exports = async function handler(req, res) {
 
   try {
     const cleanUrl = url.replace(/&amp;/g, '&').replace(/&#038;/g, '&');
+    // CDN 호스트별 Referer (없으면 403)
+    let referer = 'https://www.threads.net/';
+    if (/xhscdn|xiaohongshu/i.test(cleanUrl)) referer = 'https://www.xiaohongshu.com/';
+    else if (/tiktok|tikcdn|byteic|muscdn|tiktokcdn/i.test(cleanUrl)) referer = 'https://www.tiktok.com/';
     const upstream = await fetch(cleanUrl, {
       headers: {
         'User-Agent': 'Mozilla/5.0 (iPhone; CPU iPhone OS 17_0 like Mac OS X) AppleWebKit/605.1.15 (KHTML, like Gecko) Version/17.0 Mobile/15E148 Safari/604.1',
-        'Referer': 'https://www.threads.net/',
+        'Referer': referer,
         'Accept': '*/*',
       },
     });
